@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="robots" content="noindex,nofollow">
+  <title>TCG横断在庫検索</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="wrap">
+    <header>
+      <h1>TCG横断在庫検索</h1>
+      <p>商品名・JAN・型番で、登録済みショップを必要な時だけ横断検索する個人用ツール。</p>
+    </header>
+
+    <section class="panel">
+      <form id="searchForm">
+        <div class="searchRow">
+          <input id="query" type="search" autocomplete="off" enterkeyhint="search" maxlength="100"
+                 placeholder="例：GD03 / Steel Requiem / 4904810939542" required>
+          <button id="searchButton" type="submit">横断検索</button>
+        </div>
+        <div class="options">
+          <label><input id="sealedOnly" type="checkbox" checked> BOX・カートン・新品を優先</label>
+          <label><input id="forceRefresh" type="checkbox"> 10分キャッシュを無視</label>
+          <label><input id="inStockOnly" type="checkbox"> 在庫ありだけ表示</label>
+        </div>
+        <div id="history" class="history" aria-label="最近の検索"></div>
+      </form>
+    </section>
+
+    <section class="panel compact">
+      <div class="summary">
+        <span id="progress">ショップ一覧を読み込み中…</span>
+        <span id="resultCount"></span>
+      </div>
+    </section>
+
+    <section id="results" class="results">
+      <div class="empty">検索語を入れて実行して。</div>
+    </section>
+
+    <details class="panel diagnostics">
+      <summary>検索できなかった店・該当なしの店</summary>
+      <div id="storeStatuses" class="statusList"></div>
+    </details>
+
+    <p class="foot">
+      価格・在庫は各ショップ公開ページからの自動判定。注文前に商品ページで最終確認して。サイトが自動取得を拒否した場合は回避せず、手動確認リンクへ切り替える。
+    </p>
+  </main>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
