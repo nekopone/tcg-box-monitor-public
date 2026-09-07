@@ -51,6 +51,8 @@ async function startSearch() {
   storeResults = new Map();
   searching = true;
   const runId = ++currentRun;
+  const forceRefresh = els.forceRefresh.checked;
+  const cacheBust = forceRefresh ? String(Date.now()) : '';
   els.searchButton.disabled = true;
   els.results.innerHTML = '<div class="empty">検索開始。返ってきた店から表示する。</div>';
   els.resultCount.textContent = '';
@@ -68,8 +70,9 @@ async function startSearch() {
           store: store.id,
           q: query,
           sealed: els.sealedOnly.checked ? '1' : '0',
-          refresh: els.forceRefresh.checked ? '1' : '0',
+          refresh: forceRefresh ? '1' : '0',
         });
+        if (cacheBust) params.set('_bust', cacheBust);
         const response = await fetch(`/api/search?${params}`, { cache: 'no-store' });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
