@@ -15,7 +15,7 @@ const HTTP_HEADERS = {
 };
 
 export default {
-  async fetch(request, env, ctx) {
+  async fetch(request, env) {
     const url = new URL(request.url);
 
     if (url.pathname === '/api/health') {
@@ -30,7 +30,7 @@ export default {
     }
 
     if (url.pathname === '/api/search') {
-      return handleStoreSearch(request, ctx);
+      return handleStoreSearch(request);
     }
 
     if (env.ASSETS) return env.ASSETS.fetch(request);
@@ -38,7 +38,7 @@ export default {
   },
 };
 
-async function handleStoreSearch(request, ctx) {
+async function handleStoreSearch(request) {
   const startedAt = Date.now();
   const url = new URL(request.url);
   const storeId = url.searchParams.get('store') || '';
@@ -50,18 +50,6 @@ async function handleStoreSearch(request, ctx) {
   if (!store) return jsonResponse({ error: 'Unknown store.' }, 400);
   if (!query) return jsonResponse({ error: '検索語を入力して。' }, 400);
   if (query.length > MAX_QUERY_LENGTH) return jsonResponse({ error: '検索語は100文字以内にして。' }, 400);
-
-  const cache = caches.default;
-  const cacheKey = buildCacheKey(request, storeId, query, sealedOnly);
-
-  if (!forceRefresh) {
-    const cached = await cache.match(cacheKey);
-    if (cached) {
-      const response = new Response(cached.body, cached);
-      response.headers.set('X-TCG-Cache', 'HIT');
-      return response;
-    }
-  }
 
   const manualSearchUrl = buildStoreSearchUrl(store, query);
   const baseResult = {
@@ -104,7 +92,7 @@ async function handleStoreSearch(request, ctx) {
       if (!candidates.length) {
         baseResult.status = 'no_hit';
       } else {
-        const detailed = await Promise.all(
+        baseResult.results = await Promise.all(
           candidates.map(async (candidate) => {
             try {
               const detailResponse = await fetchHtml(candidate.url, DETAIL_HTML_MAX_BYTES);
@@ -123,7 +111,6 @@ async function handleStoreSearch(request, ctx) {
             }
           }),
         );
-        baseResult.results = detailed;
       }
     }
   } catch (error) {
@@ -133,19 +120,8 @@ async function handleStoreSearch(request, ctx) {
 
   baseResult.elapsedMs = Date.now() - startedAt;
   const response = jsonResponse(baseResult);
-  response.headers.set('Cache-Control', `public, max-age=${CACHE_SECONDS}`);
-  response.headers.set('X-TCG-Cache', 'MISS');
-  ctx.waitUntil(cache.put(cacheKey, response.clone()));
+  response.headers.set('Cache-Control', forceRefresh ? 'no-store' : `public, max-age=${CACHE_SECONDS}`);
   return response;
-}
-
-function buildCacheKey(request, storeId, query, sealedOnly) {
-  const source = new URL(request.url);
-  const key = new URL('/__tcg_cache/search', source.origin);
-  key.searchParams.set('store', storeId);
-  key.searchParams.set('q', query);
-  key.searchParams.set('sealed', sealedOnly ? '1' : '0');
-  return new Request(key.toString(), { method: 'GET' });
 }
 
 async function fetchHtml(url, maxBytes) {
@@ -187,6 +163,7 @@ async function readBodyLimited(response, maxBytes) {
   } finally {
     try { await reader.cancel(); } catch {}
   }
+
   const merged = new Uint8Array(total);
   let offset = 0;
   for (const chunk of chunks) {
