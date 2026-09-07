@@ -133,7 +133,7 @@ async function fetchHtml(url, maxBytes) {
       headers: HTTP_HEADERS,
       redirect: 'follow',
       signal: controller.signal,
-      cf: { cacheTtl: 0 },
+      cache: 'no-store',
     });
     const bytes = await readBodyLimited(response, maxBytes);
     const text = decodeBytes(bytes, response.headers.get('content-type') || '');
