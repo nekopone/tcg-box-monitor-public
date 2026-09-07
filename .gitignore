@@ -1,29 +1,7 @@
+node_modules/
+.wrangler/
+.dev.vars
 .env
 .env.*
 !.env.example
-.venv/
-__pycache__/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.coverage
-htmlcov/
-monitor_state.json
-monitor_state.json.cms
-private-config.yaml
-monitor-decryption-key.pem
-*.egg-info/
-build/
-dist/
-
-# 認証情報を置きがちな名前を明示的に除外する。
-# 実際の値はGitHub Actions Secretsまたはローカルの.envだけで管理する。
-.secrets/
-.credentials/
-credentials*.json
-client_secret*.json
-service-account*.json
-google-service-account*.json
-*.pem
-!privacy/monitor-certificate.pem
-*.key
+.wrangler-dry-run/

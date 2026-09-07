@@ -1,81 +1,50 @@
-# TCG BOX抽選・発売日モニター
+# TCG横断在庫検索（Cloudflare Workers版）
 
-ポケモンカードゲーム、ONE PIECEカードゲーム、ドラゴンボールスーパーカードゲーム フュージョンワールド、遊戯王OCG、ディズニー・ロルカナ、ガンダムカードゲームのBOX抽選受付開始と発売日を監視し、DiscordとGoogle Calendarへ重複なく通知するPython 3.12製ツールです。
+個人用の「TCG版 価格.com」。商品名、JAN、型番（例: `GD03`）を入れると、登録済みのTCG通販売り場をオンデマンドで横断検索し、価格・在庫・商品URLをまとめます。
 
-## 運用構成
+## 設計
 
-- 共通ルールと全監視先は`sites.yaml`で一元管理します。
-- 監視状態は、このリポジトリ自身の`monitor-state`ブランチへ`monitor_state.json`として保存します。別リポジトリには依存しません。
-- 通知先などの認証情報だけをGitHub Actions Secretsへ保存します。
-- 設定・状態とも通常のテキストなので、復号作業なしで確認、修正、テストできます。
+- **常時監視しない**: 検索ボタンを押した時だけ通信。
+- **1ショップ = 1 Worker API呼び出し**: ブラウザから最大6店ずつ並列実行し、遅い店や壊れた店が全体を止めない。
+- 各Worker呼び出しは、原則 **検索ページ1回 + 上位候補の商品詳細最大2回**だけ取得。
+- 同じ `ショップ + 検索語` は **10分キャッシュ**。
+- CAPTCHA / 403 / 429 を回避するコードは入れない。拒否された店は「手動確認」へ落とす。
+- 検索先URLは固定ホワイトリスト。ユーザー入力から任意URLをfetchしないので、SSRF用途にならない。
+- APIキー、Cookie、アカウントID、個人情報などの秘密情報はリポジトリに置かない。
 
-## 監視方針
+## 現在の対象
 
-- 汎用の店舗・通販・抽選サイトは、6作品すべてを監視対象として設定します。
-- メーカー公式、作品公式ショップ、ポケモンセンターなど作品が限定されるサイトだけは、扱う作品へ限定します。
-- 全監視先の確認間隔は120分に統一しています。
-- 定期実行は毎日06:04、11:04、16:04、18:04、20:04、22:04（日本時間）の6回です。
-- BOXだけを対象にし、構築済みデッキ、スターター、単品パック、周辺用品、当選発表だけの告知は除外します。
-- 公式情報を優先し、二次情報は補完経路として扱います。
-- CAPTCHA、Cloudflare、人間確認、ログイン画面は突破せず、監視異常として扱います。
+19売り場。ガンダム、ポケカ、ワンピース、ヴァイス、ホロライブ、ロルカナ等を扱う、これまで信用面を確認した通販を中心に登録しています。
 
-作品ごとのON/OFFは`GAME_MONITOR_MODES.txt`で切り替えます。OFFの作品しか扱わない監視先は、ページ取得前に除外します。
+## Cloudflareへの初回デプロイ（ここだけ手作業）
 
-`EXPEDITION_MODE.txt`は、当選時に1回来店すればよい遠征先を地域別に切り替えるファイルです。`EXPEDITION_SENDAI`、`EXPEDITION_TOKYO_ROUTE`、`EXPEDITION_TOKYO`をそれぞれ`ON`または`OFF`にできます。`OFF`の地域は、対象ページへの通信、画像読み取り、監視状態処理を行いません。
+このアプリは価格・在庫検索専用の公開リポジトリです。抽選監視・Discord通知・カレンダー登録は、別の `nekoromme/tcg-box-monitor-public` で動きます。
 
-- `EXPEDITION_SENDAI`: 従来の仙台遠征5店
-- `EXPEDITION_TOKYO_ROUTE`: 福島・郡山・小山・大宮の駅近店
-- `EXPEDITION_TOKYO`: 秋葉原・池袋・渋谷・新宿の駅近店
+1. Cloudflare Dashboard → **Workers & Pages** → **Create application** → **Import a repository**。
+2. GitHubを接続し、`nekoromme/tcg-cross-search` を選択。
+3. Worker名を **`tcg-cross-search`** にする（`wrangler.jsonc` の `name` と一致させる）。
+4. **Root directory** は空欄（リポジトリ直下）にする。`cross-search-worker` は入力しない。
+5. Build command は `npm test`、Deploy command は `npx wrangler deploy` を推奨。
+6. Save and Deploy。
+7. 発行された `workers.dev` のURLを開く。以前の `cross-search-worker/*` という Build watch paths が設定されていれば削除する。専用リポジトリなのでパスによる絞り込みは不要。
 
-TCバトロコ盛岡大通・仙台駅東口とトレーディングカードピット仙台駅東口店は通常監視のため、地域スイッチに関係なく動きます。リポスト応募、店頭掲示QRだけの応募、当選後に店頭予約と受取の2回来店が必要な回は通知対象から除外します。
+以後はこのリポジトリの `main` が更新されるとCloudflare側が自動デプロイします。抽選監視側の更新には反応しません。
 
-## GitHub Actions Secrets
-
-`Settings` → `Secrets and variables` → `Actions`で次を登録します。値をIssue、Pull Request、Actionsログ、READMEへ貼らないでください。
-
-| Secret | 内容 |
-|---|---|
-| `DISCORD_WEBHOOK_URL` | 通知先DiscordチャンネルのWebhook URL |
-| `GOOGLE_SERVICE_ACCOUNT_JSON` | GoogleサービスアカウントJSON全文 |
-| `GOOGLE_CALENDAR_ID` | 監視専用Google Calendar ID |
-
-状態ブランチへの読み書きには、このリポジトリの`GITHUB_TOKEN`を使います。追加の状態保存用トークンは不要です。
-
-## GitHub Actionsの使い方
-
-1. `test` workflowで設定検証、静的解析、全テストを確認します。
-2. 初回だけ`monitor` workflowを`baseline`で実行します。
-3. `dry-run`で通知候補を確認します。
-4. `arm`を実行し、定期通知を有効化します。
-5. 以後は定期実行と、監視コード・設定を`main`へ反映した直後の実行に任せます。
-
-既存の`monitor_state.json`を移行済みなら、`baseline`と`arm`のやり直しは不要です。
-
-## ローカル実行
+## ローカル確認
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -e '.[dev]'
-tcg-monitor validate-config
-pytest
+npm ci
+npm test
+npm run dev
 ```
 
-監視状態を指定して外部送信なしで確認する場合は次を使います。
+## 変更しやすい場所
 
-```bash
-tcg-monitor --state monitor_state.json dry-run
-tcg-monitor --state monitor_state.json summary
-```
+- 店の追加・検索URL変更: `src/stores.js`
+- 検索結果から候補商品を拾う: `src/search-results.js`
+- 商品詳細の価格・在庫判定: `src/product-detail.js`
+- 共通の文字列・価格・在庫判定: `src/search-common.js`
+- HTTP・キャッシュ: `src/index.js`
+- 画面: `public/`
 
-## コマンド
-
-- `tcg-monitor validate-config`: 設定検証
-- `tcg-monitor baseline [--include-future-releases]`: 現在見える案件を既知化
-- `tcg-monitor dry-run`: 外部送信せず候補を確認
-- `tcg-monitor run`: armed状態の時だけ通知
-- `tcg-monitor arm`: 定期通知を有効化
-- `tcg-monitor status`: 状態JSONを表示
-- `tcg-monitor summary`: Actions用の監視結果を生成
-
-共通オプションとして`--source SOURCE_ID`、`--game GAME_ID`、`--fixture-dir tests/fixtures`、`--config sites.yaml`、`--state monitor_state.json`、`--game-switch GAME_MONITOR_MODES.txt`、`--expedition-switch EXPEDITION_MODE.txt`が使えます。
+サイト側HTMLが変わって検索が壊れた場合、基本的には該当店の設定か解析ロジックだけ直せば復旧できます。
