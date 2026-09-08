@@ -129,7 +129,7 @@
       "fingerprint": "beb2259a8f3183ce5f09c7dd83f89addd2805ee132b97d290edaa0e94d44bd16",
       "first_seen_at": "2026-08-24T20:28:44.477116+09:00",
       "last_notified_fingerprint": "beb2259a8f3183ce5f09c7dd83f89addd2805ee132b97d290edaa0e94d44bd16",
-      "last_seen_at": "2026-09-08T13:38:07.245635+09:00",
+      "last_seen_at": "2026-09-08T22:39:19.916596+09:00",
       "notified": true,
       "period_text": "岩手県にて2026年8月17日から9月18日の間、対象店舗にてau PAY(コード支払い)を利用すると、",
       "provider": "au_pay",
@@ -200,37 +200,37 @@
       "alert_sent": false,
       "consecutive_failures": 0,
       "last_error": null,
-      "last_success_at": "2026-09-08T13:38:07.245635+09:00"
+      "last_success_at": "2026-09-08T22:39:19.916596+09:00"
     },
     "au_pay|https://media.aupay.wallet.auone.jp/articles/search?q%5Btitle_cont%5D=%E8%87%AA%E6%B2%BB%E4%BD%93%E3%82%AD%E3%83%A3%E3%83%B3%E3%83%9A%E3%83%BC%E3%83%B3&page=2": {
       "alert_sent": false,
       "consecutive_failures": 0,
       "last_error": null,
-      "last_success_at": "2026-09-08T13:38:07.245635+09:00"
+      "last_success_at": "2026-09-08T22:39:19.916596+09:00"
     },
     "au_pay|https://media.aupay.wallet.auone.jp/articles/search?q%5Btitle_cont%5D=%E8%87%AA%E6%B2%BB%E4%BD%93%E3%82%AD%E3%83%A3%E3%83%B3%E3%83%9A%E3%83%BC%E3%83%B3&page=3": {
       "alert_sent": false,
       "consecutive_failures": 0,
       "last_error": null,
-      "last_success_at": "2026-09-08T13:38:07.245635+09:00"
+      "last_success_at": "2026-09-08T22:39:19.916596+09:00"
     },
     "dpay|https://service.smt.docomo.ne.jp/keitai_payment/campaign/dpay_ouen/": {
       "alert_sent": false,
       "consecutive_failures": 0,
       "last_error": null,
-      "last_success_at": "2026-09-08T13:38:07.245635+09:00"
+      "last_success_at": "2026-09-08T22:39:19.916596+09:00"
     },
     "paypay|https://paypay.ne.jp/event/support-local/": {
       "alert_sent": false,
       "consecutive_failures": 0,
       "last_error": null,
-      "last_success_at": "2026-09-08T13:38:07.245635+09:00"
+      "last_success_at": "2026-09-08T22:39:19.916596+09:00"
     },
     "rakuten_pay|https://common-service.payment.rakuten.co.jp/ptcms/campaign-medias/common-campaign-list.json": {
       "alert_sent": false,
       "consecutive_failures": 0,
       "last_error": null,
-      "last_success_at": "2026-09-08T13:38:07.245635+09:00"
+      "last_success_at": "2026-09-08T22:39:19.916596+09:00"
     }
   },
   "version": 1
