@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 from collections.abc import Mapping
 from dataclasses import replace
@@ -409,6 +410,17 @@ def _prepare_releases(state: MonitorState, releases: list[Release]) -> tuple[lis
     prepared: list[Release] = []
     new_count = 0
     for release in releases:
+        # 発売情報はメーカー公式で確認できたものだけを採用する。
+        # 店舗・まとめサイトだけの日付は、表示・通知・予定登録へ流さない。
+        # 抽選情報の補完経路はこの処理とは独立している。
+        if release.source_tier != SourceTier.OFFICIAL:
+            log_event(
+                phase="release_filter",
+                outcome="skipped",
+                reason_code="official_release_required",
+                product=release.canonical_product_key,
+            )
+            continue
         canonical_id = state.canonical_release_identity(release)
         already_known = canonical_id in state.data.get("seen_releases", {})
         if not already_known:
@@ -698,13 +710,19 @@ def _release_discord_description(
     *,
     date_changed: bool,
 ) -> str:
+    release_value = "発売日: 未確定"
+    if release.release_date:
+        release_value = f"発売日: {_format_user_datetime(release.release_date)}"
+    elif release.release_month:
+        year, month = release.release_month.split("-")
+        release_value = f"発売月: {year}年{int(month)}月（公式発表・日にち未確定）"
     lines = [
         f"商品: {release.product_name}",
-        f"発売日: {_format_user_datetime(release.release_date)}"
-        if release.release_date
-        else "発売日: 未確定",
+        release_value,
         f"公式ページ: {release.official_url or release.source_url}",
     ]
+    if release.release_month and not release.release_date:
+        lines.append("発売日が公式発表されたら、改めて通知してカレンダーに登録します。")
     if date_changed:
         lines.append("更新: 発売日が変更されました")
     if release.source_tier == SourceTier.SECONDARY:
@@ -1184,6 +1202,30 @@ def main(argv: list[str] | None = None) -> int:
             date_changed = bool(previous_date and current_date and previous_date != current_date)
             _remember_release(state, release)
             if not release.release_date:
+                # 月しか決まっていない商品も予告する。1日や月末を仮の
+                # 発売日にすると誤った予定になるため、カレンダーは触らない。
+                month = release.release_month or ""
+                if not re.fullmatch(r"20\d{2}-(?:0[1-9]|1[0-2])", month):
+                    continue
+                if not today.strftime("%Y-%m") <= month <= last_day.strftime("%Y-%m"):
+                    continue
+                # 確定日通知と別の送信記録にする。既知化済みのEB-05も
+                # 救済でき、毎回の重複と後日の確定日通知漏れを防げる。
+                month_key = f"release-month:{release.release_id}:{month}"
+                if not state.delivered(month_key):
+                    discord.send(
+                        f"【{config.games[release.game_id].short_name}新弾発売月】"
+                        + release.product_name,
+                        _release_discord_description(release, date_changed=False),
+                    )
+                    state.mark_delivered(month_key)
+                    log_event(
+                        phase="release_delivery",
+                        outcome="sent",
+                        reason_code="official_release_month_announced",
+                        product=release.canonical_product_key,
+                        release_month=month,
+                    )
                 continue
             if not today <= release.release_date <= last_day:
                 continue
